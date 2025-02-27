@@ -1,0 +1,6 @@
+/.idea
+local/.env
+local/vhost.conf
+local/docker-compose.yml
+local/php.ini
+local/init

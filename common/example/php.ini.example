@@ -1,0 +1,10 @@
+max_execution_time = 300;
+upload_max_filesize = 128M;
+post_max_size = 128M;
+memory_limit = 2G;
+request_terminate_timeout = 300s;
+
+xdebug.mode = debug,coverage
+xdebug.start_with_request = yes
+xdebug.client_host = host.docker.internal
+xdebug.client_port = 9005
