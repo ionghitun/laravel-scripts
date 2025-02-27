@@ -1,23 +1,28 @@
 #!/bin/bash
-echo "Started setup"
+echo "*** Setup start ***"
 
 cd scripts/local
 
 ENV_FILE=".env"
 
 if [[ -f "$ENV_FILE" ]]; then
-    read -p ".env file already exists. Do you want to restart configuration? (y/n) [default: n]: " OVERWRITE_ENV
+    read -p ".env file already exists. Do you want to reset configuration? (y/n) [default: n]: " OVERWRITE_ENV
 
     if [[ ! "$OVERWRITE_ENV" =~ ^[Yy]$ ]]; then
-        echo "Skipping configuration!"
+        echo "*** script cancelled ***"
         exit 0
     fi
+fi
+
+echo "*** removing old configuration ***"
+if [[ -f "docker-compose.yml" ]]; then
+    docker compose down
 fi
 
 if [[ ! -f "$ENV_FILE" || "$OVERWRITE_ENV" =~ ^[Yy]$ ]]; then
     ENV_EXAMPLE=".env.example"
     if [[ ! -f "$ENV_EXAMPLE" ]]; then
-        echo "Error: $ENV_EXAMPLE not found!"
+        echo "*** Error: $ENV_EXAMPLE not found! ***"
         exit 1
     fi
 
@@ -29,7 +34,7 @@ if [[ ! -f "$ENV_FILE" || "$OVERWRITE_ENV" =~ ^[Yy]$ ]]; then
 
     rm -f "$ENV_FILE"
 
-    echo "Creating .env file"
+    echo "*** Creating new $ENV_FILE file ***"
     touch "$ENV_FILE"
 
     STACK_NAME=$(get_default_value "STACK_NAME")
@@ -117,7 +122,7 @@ if [[ ! -f "$ENV_FILE" || "$OVERWRITE_ENV" =~ ^[Yy]$ ]]; then
             MINIO_DOMAIN=${input:-$MINIO_DOMAIN}
             echo "EXTRA_HOST_MINIO=$MINIO_DOMAIN:$GATEWAY_IP" >> "$ENV_FILE"
         else
-            echo "Error: Unable to retrieve Gateway IP for nginx-proxy network."
+            echo "*** Error: Unable to retrieve Gateway IP for nginx-proxy network ***"
             exit 1
         fi
     fi
@@ -127,9 +132,10 @@ if [[ ! -f "$ENV_FILE" || "$OVERWRITE_ENV" =~ ^[Yy]$ ]]; then
     REDIS_PASSWORD=${input:-$REDIS_PASSWORD}
     echo "REDIS_PASSWORD=$REDIS_PASSWORD" >> "$ENV_FILE"
 
+    echo "*** Creating new php.ini file ***"
     cp ../common/example/php.ini.example php.ini
 
-    read -p "Do you want to enable and use Xdebug? (y/n) [default: y]: " USE_XDEBUG
+    read -p "Do you want to enable and use xdebug? (y/n) [default: y]: " USE_XDEBUG
     USE_XDEBUG=${USE_XDEBUG:-y}
     if [[ "$USE_XDEBUG" =~ ^[Yy]$ ]]; then
         XDEBUG_PORT=$(get_default_value "XDEBUG_PORT")
@@ -146,14 +152,17 @@ set -a
 source "$ENV_FILE"
 set +a
 
+echo "*** Creating new init/01-databases.sql file ***"
 [ -d init ] || mkdir init
 cp ../common/example/01-databases.sql.example init/01-databases.sql
 sed -i "s/DB_NAME/${MYSQL_DATABASE}/g" init/01-databases.sql
 
+echo "*** Creating new vhost.conf file ***"
 cp ../common/example/vhost.conf.example vhost.conf
 sed -i "s/DOMAIN_HOST/${DOMAIN_HOST}/g" vhost.conf
 sed -i "s/API_SERVICE/${STACK_NAME}-php/g" vhost.conf
 
+echo "*** Creating new docker-compose.yml file ***"
 cp ../common/example/docker-compose.yml.example docker-compose.yml
 sed -i "s/STACK_NAME/${STACK_NAME}/g" docker-compose.yml
 
@@ -176,25 +185,46 @@ if [[ -z "$HAS_MINIO" ]]; then
 fi
 
 if [ ! -f ../../.env ]; then
+    echo "*** Creating laravel .env file ***"
     cp ../../.env.example ../../.env
 fi
-[ -d ../../storage/logs/services ] || mkdir ../../storage/logs/services
 
-if [[ -n "$HAS_HTTPS" ]]; then
-    sed -i "s|^APP_URL=.*|APP_URL=https://${DOMAIN_HOST}|" ../../.env
-else
-    sed -i "s|^APP_URL=.*|APP_URL=http://${DOMAIN_HOST}|" ../../.env
+echo "*** Creating laravel storage/logs/services folder ***"
+[ -d ../../storage/logs/services ] || mkdir ../../storage/logs/services
+echo -e "*\n!.gitignore" > ../../storage/logs/services/.gitignore
+
+if ! grep -Fxq "!/services/.gitignore" ../../storage/logs/.gitignore; then
+    echo "!/services/.gitignore" >> ../../storage/logs/.gitignore
 fi
 
-sed -i "s/^DB_HOST=.*/DB_HOST=$STACK_NAME-mysql/" ../../.env
-sed -i "s/^DB_DATABASE=.*/DB_DATABASE=$MYSQL_DATABASE/" ../../.env
-sed -i "s/^DB_USERNAME=.*/DB_USERNAME=$MYSQL_USERNAME/" ../../.env
-sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$MYSQL_PASSWORD/" ../../.env
-sed -i "s/^REDIS_HOST=.*/REDIS_HOST=$STACK_NAME-redis/" ../../.env
-sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$REDIS_PASSWORD/" ../../.env
+read -p "Want to update laravel .env with known information? (y/n) [default: y]: " UPDATE_LARAVEL_ENV
+UPDATE_LARAVEL_ENV=${UPDATE_LARAVEL_ENV:-y}
 
-docker compose up -d --force-recreate --build --remove-orphans
+if [[ "$UPDATE_LARAVEL_ENV" =~ ^[Yy]$ ]]; then
+    if [[ -n "$HAS_HTTPS" ]]; then
+        sed -i "s|^APP_URL=.*|APP_URL=https://${DOMAIN_HOST}|" ../../.env
+    else
+        sed -i "s|^APP_URL=.*|APP_URL=http://${DOMAIN_HOST}|" ../../.env
+    fi
 
+    sed -i "s/^DB_HOST=.*/DB_HOST=$STACK_NAME-mysql/" ../../.env
+    sed -i "s/^DB_DATABASE=.*/DB_DATABASE=$MYSQL_DATABASE/" ../../.env
+    sed -i "s/^DB_USERNAME=.*/DB_USERNAME=$MYSQL_USERNAME/" ../../.env
+    sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$MYSQL_PASSWORD/" ../../.env
+    sed -i "s/^REDIS_HOST=.*/REDIS_HOST=$STACK_NAME-redis/" ../../.env
+    sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$REDIS_PASSWORD/" ../../.env
+fi
+
+echo "*** Building application ***"
+docker-compose build --no-cache
+docker compose up -d --force-recreate --remove-orphans
+
+echo "*** Waiting for containers to be ready ***"
+until docker logs "${STACK_NAME}-mysql" 2>&1 | grep -q "mysqld: ready for connections"; do
+  sleep 2
+done
+
+echo "*** Running application scripts ***"
 docker exec ${STACK_NAME}-php bash -c "composer install"
 docker exec ${STACK_NAME}-php bash -c "php artisan key:generate"
 docker exec ${STACK_NAME}-php bash -c "php artisan optimize:clear"
@@ -202,3 +232,5 @@ docker exec ${STACK_NAME}-php bash -c "php artisan migrate --seed"
 docker exec ${STACK_NAME}-php bash -c "npm install"
 docker exec ${STACK_NAME}-php bash -c "npm run build"
 docker exec ${STACK_NAME}-php bash -c "php artisan storage:link"
+
+echo "*** Setup ended ***"

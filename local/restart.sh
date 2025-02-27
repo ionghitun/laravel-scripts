@@ -1,7 +1,7 @@
 #!/bin/bash
-echo "Started restart"
+echo "*** Restarting... ***"
 
 cd scripts/local
 docker compose restart
 
-echo "Finished restart"
+echo "*** Restarted ***"

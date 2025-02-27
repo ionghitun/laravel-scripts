@@ -5,12 +5,12 @@ Dockerize any laravel application
 ### Install notes
 
 - copy content of this repository into `scripts` folder of your laravel project
-- run `bash scripts/local/intial-setup.sh` to install the project
+- run `bash scripts/local/initial-setup.sh` to install the project
 - application will be available at `DOMAIN_HOST`
 
 ### Available scripts
 
-- `bash scripts/local/intial-setup.sh` - install the project
+- `bash scripts/local/initial-setup.sh` - install the project
 
   You can run it multiple times if you need to reset the project
 

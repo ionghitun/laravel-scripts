@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Started restart"
+echo "*** Rebuild start ***"
 
 cd scripts/local
 
@@ -17,6 +17,8 @@ if [[ "$UPDATE_IMAGES" =~ ^[Yy]$ ]]; then
     docker pull "${REDIS_IMAGE_VERSION}"
 fi
 
-docker compose up -d --force-recreate --build
+echo "*** Rebuilding application ***"
+docker-compose build --no-cache
+docker compose up -d --force-recreate --remove-orphans
 
-echo "Finished restart"
+echo "*** Rebuild ended ***"
