@@ -16,7 +16,8 @@ fi
 
 echo "*** removing old configuration ***"
 if [[ -f "docker-compose.yml" ]]; then
-    docker compose down
+    export STACK_NAME=$(grep -oP '^STACK_NAME=\K.*' .env)
+    docker compose -p "$STACK_NAME" down
 fi
 
 if [[ ! -f "$ENV_FILE" || "$OVERWRITE_ENV" =~ ^[Yy]$ ]]; then
@@ -142,6 +143,8 @@ if [[ ! -f "$ENV_FILE" || "$OVERWRITE_ENV" =~ ^[Yy]$ ]]; then
         read -p "Enter Xdebug port [default: $XDEBUG_PORT]: " input
         XDEBUG_PORT=${input:-$XDEBUG_PORT}
         echo "XDEBUG_PORT=$XDEBUG_PORT" >> "$ENV_FILE"
+
+        sed -i "s/^xdebug.client_port = .*/xdebug.client_port = $XDEBUG_PORT/" php.ini
     else
         sed -i '/xdebug/d' php.ini
     fi
@@ -216,8 +219,8 @@ if [[ "$UPDATE_LARAVEL_ENV" =~ ^[Yy]$ ]]; then
 fi
 
 echo "*** Building application ***"
-docker-compose build --no-cache
-docker compose up -d --force-recreate --remove-orphans
+docker compose -p "$STACK_NAME" build --no-cache
+docker compose -p "$STACK_NAME" up -d --force-recreate --remove-orphans
 
 echo "*** Waiting for containers to be ready ***"
 until docker logs "${STACK_NAME}-mysql" 2>&1 | grep -q "mysqld: ready for connections"; do

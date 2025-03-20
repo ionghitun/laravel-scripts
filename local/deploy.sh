@@ -5,7 +5,7 @@ cd scripts/local
 export STACK_NAME=$(grep -oP '^STACK_NAME=\K.*' .env)
 
 echo "*** Making sure application is up ***"
-docker compose up -d
+docker compose -p "$STACK_NAME" up -d
 
 echo "*** Running application scripts ***"
 docker exec ${STACK_NAME}-php bash -c "composer install"

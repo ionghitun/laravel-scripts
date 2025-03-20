@@ -17,8 +17,10 @@ if [[ "$UPDATE_IMAGES" =~ ^[Yy]$ ]]; then
     docker pull "${REDIS_IMAGE_VERSION}"
 fi
 
+export STACK_NAME=$(grep -oP '^STACK_NAME=\K.*' .env)
+
 echo "*** Rebuilding application ***"
-docker-compose build --no-cache
-docker compose up -d --force-recreate --remove-orphans
+docker compose -p "$STACK_NAME" build --no-cache
+docker compose -p "$STACK_NAME" up -d --force-recreate --remove-orphans
 
 echo "*** Rebuild ended ***"
