@@ -196,6 +196,10 @@ echo "*** Creating laravel storage/logs/services folder ***"
 [ -d ../../storage/logs/services ] || mkdir ../../storage/logs/services
 echo -e "*\n!.gitignore" > ../../storage/logs/services/.gitignore
 
+if ! grep -Fxq "!/services" ../../storage/logs/.gitignore; then
+    echo "!/services" >> ../../storage/logs/.gitignore
+fi
+
 if ! grep -Fxq "!/services/.gitignore" ../../storage/logs/.gitignore; then
     echo "!/services/.gitignore" >> ../../storage/logs/.gitignore
 fi
