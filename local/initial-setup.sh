@@ -1,82 +1,89 @@
-#!/bin/bash
+#!/bin/sh
 echo "*** Setup start ***"
 
-cd scripts/local
+cd scripts/local || exit
 
-ENV_FILE=".env"
+ENV_FILE="./.env"
 
-if [[ -f "$ENV_FILE" ]]; then
-    read -p ".env file already exists. Do you want to reset configuration? (y/n) [default: n]: " OVERWRITE_ENV
+if [ -f "$ENV_FILE" ]; then
+    printf ".env file already exists. Do you want to reset configuration? (y/n) [default: n]: "
+    read OVERWRITE_ENV
 
-    if [[ ! "$OVERWRITE_ENV" =~ ^[Yy]$ ]]; then
-        echo "*** script cancelled ***"
-        exit 0
-    fi
+    OVERWRITE_ENV=${OVERWRITE_ENV:-n}
+    case "$OVERWRITE_ENV" in
+        [Yy]) ;;
+        *) echo "*** Script cancelled ***"; exit 0 ;;
+    esac
 fi
 
-echo "*** removing old configuration ***"
-if [[ -f "docker-compose.yml" ]]; then
-    export STACK_NAME=$(grep -oP '^STACK_NAME=\K.*' .env)
+echo "*** Removing old configuration ***"
+if [ -f "docker-compose.yml" ]; then
+    STACK_NAME=$(grep '^STACK_NAME=' .env | cut -d '=' -f2)
     docker compose -p "$STACK_NAME" down
 fi
 
-if [[ ! -f "$ENV_FILE" || "$OVERWRITE_ENV" =~ ^[Yy]$ ]]; then
+if [ ! -f "$ENV_FILE" ] || [ "$OVERWRITE_ENV" = "y" ] || [ "$OVERWRITE_ENV" = "Y" ]; then
     ENV_EXAMPLE=".env.example"
-    if [[ ! -f "$ENV_EXAMPLE" ]]; then
+    if [ ! -f "$ENV_EXAMPLE" ]; then
         echo "*** Error: $ENV_EXAMPLE not found! ***"
         exit 1
     fi
 
     get_default_value() {
-        local key=$1
-        local default_value=$(grep "^$key=" "$ENV_EXAMPLE" | cut -d '=' -f2)
-        echo "$default_value"
+        grep "^$1=" "$ENV_EXAMPLE" | cut -d '=' -f2
     }
 
     rm -f "$ENV_FILE"
-
     echo "*** Creating new $ENV_FILE file ***"
     touch "$ENV_FILE"
 
     STACK_NAME=$(get_default_value "STACK_NAME")
-    read -p "Enter value for STACK_NAME [default: $STACK_NAME]: " input
+    printf "Enter value for STACK_NAME [default: %s]: " "$STACK_NAME"
+    read input
     STACK_NAME=${input:-$STACK_NAME}
     echo "STACK_NAME=$STACK_NAME" >> "$ENV_FILE"
 
     PHP_IMAGE_VERSION=$(get_default_value "PHP_IMAGE_VERSION")
-    read -p "Enter value for PHP_IMAGE_VERSION [default: $PHP_IMAGE_VERSION]: " input
+    printf "Enter value for PHP_IMAGE_VERSION [default: %s]: " "$PHP_IMAGE_VERSION"
+    read input
     PHP_IMAGE_VERSION=${input:-$PHP_IMAGE_VERSION}
     echo "PHP_IMAGE_VERSION=$PHP_IMAGE_VERSION" >> "$ENV_FILE"
 
     MYSQL_IMAGE_VERSION=$(get_default_value "MYSQL_IMAGE_VERSION")
-    read -p "Enter value for MYSQL_IMAGE_VERSION [default: $MYSQL_IMAGE_VERSION]: " input
+    printf "Enter value for MYSQL_IMAGE_VERSION [default: %s]: " "$MYSQL_IMAGE_VERSION"
+    read input
     MYSQL_IMAGE_VERSION=${input:-$MYSQL_IMAGE_VERSION}
     echo "MYSQL_IMAGE_VERSION=$MYSQL_IMAGE_VERSION" >> "$ENV_FILE"
 
     REDIS_IMAGE_VERSION=$(get_default_value "REDIS_IMAGE_VERSION")
-    read -p "Enter value for REDIS_IMAGE_VERSION [default: $REDIS_IMAGE_VERSION]: " input
+    printf "Enter value for REDIS_IMAGE_VERSION [default: %s]: " "$REDIS_IMAGE_VERSION"
+    read input
     REDIS_IMAGE_VERSION=${input:-$REDIS_IMAGE_VERSION}
     echo "REDIS_IMAGE_VERSION=$REDIS_IMAGE_VERSION" >> "$ENV_FILE"
 
     NODE_VERSION=$(get_default_value "NODE_VERSION")
-    read -p "Enter value for NODE_VERSION [default: $NODE_VERSION]: " input
+    printf "Enter value for NODE_VERSION [default: %s]: " "$NODE_VERSION"
+    read input
     NODE_VERSION=${input:-$NODE_VERSION}
     echo "NODE_VERSION=$NODE_VERSION" >> "$ENV_FILE"
 
     DOMAIN_HOST=$(get_default_value "DOMAIN_HOST")
-    read -p "Enter value for DOMAIN_HOST [default: $DOMAIN_HOST]: " input
+    printf "Enter value for DOMAIN_HOST [default: %s]: " "$DOMAIN_HOST"
+    read input
     DOMAIN_HOST=${input:-$DOMAIN_HOST}
     echo "DOMAIN_HOST=$DOMAIN_HOST" >> "$ENV_FILE"
 
-    read -p "Are you using nginx-proxy with self signed companion and want to use HTTPS? (y/n) [default: y]: " USE_HTTPS
+    printf "Are you using nginx-proxy with self-signed companion and want to use HTTPS? (y/n) [default: y]: "
+    read USE_HTTPS
     USE_HTTPS=${USE_HTTPS:-y}
-    if [[ "$USE_HTTPS" =~ ^[Yy]$ ]]; then
+    if [ "$USE_HTTPS" = "y" ] || [ "$USE_HTTPS" = "Y" ]; then
         SELF_SIGNED_HOST=$DOMAIN_HOST
         echo "SELF_SIGNED_HOST=$SELF_SIGNED_HOST" >> "$ENV_FILE"
     fi
 
     DOMAIN_EMAIL=$(get_default_value "DOMAIN_EMAIL")
-    read -p "Enter value for DOMAIN_EMAIL [default: $DOMAIN_EMAIL]: " input
+    printf "Enter value for DOMAIN_EMAIL [default: %s]: " "$DOMAIN_EMAIL"
+    read input
     DOMAIN_EMAIL=${input:-$DOMAIN_EMAIL}
     echo "DOMAIN_EMAIL=$DOMAIN_EMAIL" >> "$ENV_FILE"
 
@@ -87,39 +94,46 @@ if [[ ! -f "$ENV_FILE" || "$OVERWRITE_ENV" =~ ^[Yy]$ ]]; then
     echo "GROUP_ID=$GROUP_ID" >> "$ENV_FILE"
 
     MYSQL_ROOT_PASSWORD=$(get_default_value "MYSQL_ROOT_PASSWORD")
-    read -p "Enter value for MYSQL_ROOT_PASSWORD [default: $MYSQL_ROOT_PASSWORD]: " input
+    printf "Enter value for MYSQL_ROOT_PASSWORD [default: %s]: " "$MYSQL_ROOT_PASSWORD"
+    read input
     MYSQL_ROOT_PASSWORD=${input:-$MYSQL_ROOT_PASSWORD}
     echo "MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD" >> "$ENV_FILE"
 
     MYSQL_USERNAME=$(get_default_value "MYSQL_USERNAME")
-    read -p "Enter value for MYSQL_USERNAME [default: $MYSQL_USERNAME]: " input
+    printf "Enter value for MYSQL_USERNAME [default: %s]: " "$MYSQL_USERNAME"
+    read input
     MYSQL_USERNAME=${input:-$MYSQL_USERNAME}
     echo "MYSQL_USERNAME=$MYSQL_USERNAME" >> "$ENV_FILE"
 
     MYSQL_PASSWORD=$(get_default_value "MYSQL_PASSWORD")
-    read -p "Enter value for MYSQL_PASSWORD [default: $MYSQL_PASSWORD]: " input
+    printf "Enter value for MYSQL_PASSWORD [default: %s]: " "$MYSQL_PASSWORD"
+    read input
     MYSQL_PASSWORD=${input:-$MYSQL_PASSWORD}
     echo "MYSQL_PASSWORD=$MYSQL_PASSWORD" >> "$ENV_FILE"
 
     MYSQL_DATABASE=$(get_default_value "MYSQL_DATABASE")
-    read -p "Enter value for MYSQL_DATABASE [default: $MYSQL_DATABASE]: " input
+    printf "Enter value for MYSQL_DATABASE [default: %s]: " "$MYSQL_DATABASE"
+    read input
     MYSQL_DATABASE=${input:-$MYSQL_DATABASE}
     echo "MYSQL_DATABASE=$MYSQL_DATABASE" >> "$ENV_FILE"
 
     MYSQL_EXTERNAL_PORT=$(get_default_value "MYSQL_EXTERNAL_PORT")
-    read -p "Enter value for MYSQL_EXTERNAL_PORT [default: $MYSQL_EXTERNAL_PORT]: " input
+    printf "Enter value for MYSQL_EXTERNAL_PORT [default: %s]: " "$MYSQL_EXTERNAL_PORT"
+    read input
     MYSQL_EXTERNAL_PORT=${input:-$MYSQL_EXTERNAL_PORT}
     echo "MYSQL_EXTERNAL_PORT=$MYSQL_EXTERNAL_PORT" >> "$ENV_FILE"
 
-    read -p "Are you using nginx-proxy and minio and want to set extra host for minio? (y/n) [default: y]: " USE_MINIO
+    printf "Are you using nginx-proxy and minio and want to set extra host for minio? (y/n) [default: y]: "
+    read USE_MINIO
     USE_MINIO=${USE_MINIO:-y}
-    if [[ "$USE_MINIO" =~ ^[Yy]$ ]]; then
+    if [ "$USE_MINIO" = "y" ] || [ "$USE_MINIO" = "Y" ]; then
         GATEWAY_IP=$(docker network inspect nginx-proxy -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}')
 
         if [ -n "$GATEWAY_IP" ]; then
             EXTRA_HOST_MINIO=$(get_default_value "EXTRA_HOST_MINIO")
             MINIO_DOMAIN=${EXTRA_HOST_MINIO%%:*}
-            read -p "Enter value for MINIO_DOMAIN [default: $MINIO_DOMAIN]: " input
+            printf "Enter value for MINIO_DOMAIN [default: %s]: " "$MINIO_DOMAIN"
+            read input
             MINIO_DOMAIN=${input:-$MINIO_DOMAIN}
             echo "EXTRA_HOST_MINIO=$MINIO_DOMAIN:$GATEWAY_IP" >> "$ENV_FILE"
         else
@@ -129,18 +143,21 @@ if [[ ! -f "$ENV_FILE" || "$OVERWRITE_ENV" =~ ^[Yy]$ ]]; then
     fi
 
     REDIS_PASSWORD=$(get_default_value "REDIS_PASSWORD")
-    read -p "Enter value for REDIS_PASSWORD [default: $REDIS_PASSWORD]: " input
+    printf "Enter value for REDIS_PASSWORD [default: %s]: " "$REDIS_PASSWORD"
+    read input
     REDIS_PASSWORD=${input:-$REDIS_PASSWORD}
     echo "REDIS_PASSWORD=$REDIS_PASSWORD" >> "$ENV_FILE"
 
     echo "*** Creating new php.ini file ***"
     cp ../common/example/php.ini.example php.ini
 
-    read -p "Do you want to enable and use xdebug? (y/n) [default: y]: " USE_XDEBUG
+    printf "Do you want to enable and use xdebug? (y/n) [default: y]: "
+    read USE_XDEBUG
     USE_XDEBUG=${USE_XDEBUG:-y}
-    if [[ "$USE_XDEBUG" =~ ^[Yy]$ ]]; then
+    if [ "$USE_XDEBUG" = "y" ] || [ "$USE_XDEBUG" = "Y" ]; then
         XDEBUG_PORT=$(get_default_value "XDEBUG_PORT")
-        read -p "Enter Xdebug port [default: $XDEBUG_PORT]: " input
+        printf "Enter Xdebug port [default: %s]: " "$XDEBUG_PORT"
+        read input
         XDEBUG_PORT=${input:-$XDEBUG_PORT}
         echo "XDEBUG_PORT=$XDEBUG_PORT" >> "$ENV_FILE"
 
@@ -152,7 +169,7 @@ fi
 
 # Load .env variables
 set -a
-source "$ENV_FILE"
+. "$ENV_FILE"
 set +a
 
 echo "*** Creating new init/01-databases.sql file ***"
@@ -173,16 +190,15 @@ HAS_MINIO=$(grep "^EXTRA_HOST_MINIO=" "$ENV_FILE" | cut -d '=' -f2)
 HAS_HTTPS=$(grep "^SELF_SIGNED_HOST=" "$ENV_FILE" | cut -d '=' -f2)
 HAS_XDEBUG=$(grep "^XDEBUG_PORT=" "$ENV_FILE" | cut -d '=' -f2)
 
-if [[ -z "$HAS_HTTPS" ]]; then
+if [ -z "$HAS_HTTPS" ]; then
     sed -i '/SELF_SIGNED_HOST:/d' docker-compose.yml
 fi
 
-if [[ -z "$HAS_XDEBUG" ]]; then
+if [ -z "$HAS_XDEBUG" ]; then
     sed -i "/${STACK_NAME}-php:/,/networks:/ { /ports:/d; /XDEBUG_PORT/d }" docker-compose.yml
     sed -i '/location \/coverage {/,/}/d' vhost.conf
 fi
-
-if [[ -z "$HAS_MINIO" ]]; then
+if [ -z "$HAS_MINIO" ]; then
     sed -i "/${STACK_NAME}-php:/,/networks:/ { /extra_hosts:/d; /host.docker.internal/d; /EXTRA_HOST_MINIO/d }" docker-compose.yml
     sed -i "/${STACK_NAME}-php:/,/${STACK_NAME}-mysql:/ { /nginx-proxy/d }" docker-compose.yml
 fi
@@ -194,7 +210,7 @@ fi
 
 echo "*** Creating laravel storage/logs/services folder ***"
 [ -d ../../storage/logs/services ] || mkdir ../../storage/logs/services
-echo -e "*\n!.gitignore" > ../../storage/logs/services/.gitignore
+echo "*\n!.gitignore" > ../../storage/logs/services/.gitignore
 
 if ! grep -Fxq "!/services" ../../storage/logs/.gitignore; then
     echo "!/services" >> ../../storage/logs/.gitignore
@@ -204,11 +220,12 @@ if ! grep -Fxq "!/services/.gitignore" ../../storage/logs/.gitignore; then
     echo "!/services/.gitignore" >> ../../storage/logs/.gitignore
 fi
 
-read -p "Want to update laravel .env with known information? (y/n) [default: y]: " UPDATE_LARAVEL_ENV
+printf "Want to update laravel .env with known information? (y/n) [default: y]: "
+read UPDATE_LARAVEL_ENV
 UPDATE_LARAVEL_ENV=${UPDATE_LARAVEL_ENV:-y}
 
-if [[ "$UPDATE_LARAVEL_ENV" =~ ^[Yy]$ ]]; then
-    if [[ -n "$HAS_HTTPS" ]]; then
+if [ "$UPDATE_LARAVEL_ENV" = "y" ] || [ "$UPDATE_LARAVEL_ENV" = "Y" ]; then
+    if [ -n "$HAS_HTTPS" ]; then
         sed -i "s|^APP_URL=.*|APP_URL=https://${DOMAIN_HOST}|" ../../.env
     else
         sed -i "s|^APP_URL=.*|APP_URL=http://${DOMAIN_HOST}|" ../../.env
@@ -232,12 +249,12 @@ until docker logs "${STACK_NAME}-mysql" 2>&1 | grep -q "mysqld: ready for connec
 done
 
 echo "*** Running application scripts ***"
-docker exec ${STACK_NAME}-php bash -c "composer install"
-docker exec ${STACK_NAME}-php bash -c "php artisan key:generate"
-docker exec ${STACK_NAME}-php bash -c "php artisan optimize:clear"
-docker exec ${STACK_NAME}-php bash -c "php artisan migrate --seed"
-docker exec ${STACK_NAME}-php bash -c "npm install"
-docker exec ${STACK_NAME}-php bash -c "npm run build"
-docker exec ${STACK_NAME}-php bash -c "php artisan storage:link"
+docker exec "${STACK_NAME}-php" bash -c "composer install"
+docker exec "${STACK_NAME}-php" bash -c "php artisan key:generate"
+docker exec "${STACK_NAME}-php" bash -c "php artisan optimize:clear"
+docker exec "${STACK_NAME}-php" bash -c "php artisan migrate --seed"
+docker exec "${STACK_NAME}-php" bash -c "npm install"
+docker exec "${STACK_NAME}-php" bash -c "npm run build"
+docker exec "${STACK_NAME}-php" bash -c "php artisan storage:link"
 
 echo "*** Setup ended ***"

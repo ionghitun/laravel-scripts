@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/bin/sh
 echo "*** Starting... ***"
 
-cd scripts/local
+cd scripts/local || exit
 
-export STACK_NAME=$(grep -oP '^STACK_NAME=\K.*' .env)
+STACK_NAME=$(grep -oP '^STACK_NAME=\K.*' .env)
 
 docker compose -p "$STACK_NAME" up -d
 
