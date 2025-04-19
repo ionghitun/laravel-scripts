@@ -6,31 +6,29 @@ USER root
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 
-RUN userdel -f www-data
-RUN if getent group www-data ; then groupdel www-data; fi
-RUN groupadd -g ${GROUP_ID} www-data
-RUN useradd -l -u ${USER_ID} -g www-data www-data
-RUN chown -R www-data:www-data /var/www
+RUN userdel -f www-data \
+    && getent group www-data && groupdel www-data || true \
+    && groupadd -g ${GROUP_ID} www-data \
+    && useradd -l -u ${USER_ID} -g www-data www-data \
+    && install -d -m 0755 -o www-data -g www-data /home/www-data \
+    && mkdir /var/log/supervisor \
+    && touch /var/run/supervisord.pid \
+    && chown -R www-data:www-data /home/www-data /var/log/supervisor /var/run /var/www
 
-RUN install -d -m 0755 -o www-data -g www-data /home/www-data
-RUN chown -R www-data:www-data /home/www-data
-
-RUN mkdir /var/log/supervisor
-RUN chown -R www-data:www-data /var/log/supervisor
-RUN touch /var/run/supervisord.pid
-RUN touch /var/run/crond.pid
-RUN chown -R www-data:www-data /var/run
-RUN chown www-data:www-data /var/run/supervisord.pid /var/run/crond.pid
-
-RUN apt-get update
-RUN apt-get upgrade -y
-
-RUN apt-get install -y nano git curl zip unzip supervisor default-mysql-client cron
-RUN apt-get install -y zlib1g-dev libicu-dev g++ libxml2-dev libmcrypt-dev libzip-dev libmagickwand-dev imagemagick
-
-RUN export EDITOR="/usr/bin/nano"
-
-RUN pecl update-channels
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
+             supervisor \
+             git \
+             zip \
+             unzip \
+             nano \
+             curl \
+             default-mysql-client cron \
+             zlib1g-dev libicu-dev g++ libxml2-dev libmcrypt-dev libzip-dev libmagickwand-dev imagemagick \
+        && rm -rf /var/lib/apt/lists/* \
+    && pecl update-channels \
+    && export EDITOR="/usr/bin/nano"
 
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
@@ -56,21 +54,23 @@ RUN pecl install xdebug && docker-php-ext-enable xdebug
 RUN docker-php-ext-install zip exif pcntl bcmath soap pdo_mysql sockets gettext
 
 ARG NODE_VERSION=22
-RUN curl -SLO https://deb.nodesource.com/nsolid_setup_deb.sh
-RUN chmod 500 nsolid_setup_deb.sh
-RUN ./nsolid_setup_deb.sh ${NODE_VERSION}
-RUN apt-get install -y nodejs
-RUN npm update -g
+RUN curl -SLO https://deb.nodesource.com/nsolid_setup_deb.sh \
+    && chmod 500 nsolid_setup_deb.sh \
+    && ./nsolid_setup_deb.sh ${NODE_VERSION} \
+    && apt-get install -y nodejs \
+    && npm update -g
 
-ADD ./scripts/common/php/crontab /etc/cron.d/api-cron
-RUN crontab -u www-data /etc/cron.d/api-cron
+ADD ./scripts/common/php/crontab /etc/cron.d/laravel-cron
+RUN crontab -u www-data /etc/cron.d/laravel-cron
 
-RUN usermod -a -G crontab www-data
-RUN chmod gu+s /usr/sbin/cron
+RUN usermod -a -G crontab www-data \
+    && chmod gu+s /usr/sbin/cron
 
 RUN python3 -c "import socket as s; sock = s.socket(s.AF_UNIX); sock.bind('/dev/shm/supervisor.sock')"
 
 USER www-data
+
+RUN echo 'export PATH="$HOME/.composer/vendor/bin:$PATH"' >> ~/.bashrc
 
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
 

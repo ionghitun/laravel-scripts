@@ -1,31 +1,41 @@
 #!/bin/sh
-echo "*** Setup start ***"
+echo
+echo "===== Starting setup... ====="
+echo
 
 cd scripts/local || exit
-
 ENV_FILE="./.env"
 
 if [ -f "$ENV_FILE" ]; then
     printf ".env file already exists. Do you want to reset configuration? (y/n) [default: n]: "
     read OVERWRITE_ENV
-
     OVERWRITE_ENV=${OVERWRITE_ENV:-n}
-    case "$OVERWRITE_ENV" in
-        [Yy]) ;;
-        *) echo "*** Script cancelled ***"; exit 0 ;;
-    esac
+
+    if [ "$OVERWRITE_ENV" = "n" ] || [ "$OVERWRITE_ENV" = "N" ]; then
+        echo
+        echo "===== Cancelled! =====";
+        echo
+
+        exit 0
+    fi
 fi
 
-echo "*** Removing old configuration ***"
+echo
+echo "===== Removing old configuration... =====";
+echo
+
 if [ -f "docker-compose.yml" ]; then
-    STACK_NAME=$(grep '^STACK_NAME=' .env | cut -d '=' -f2)
-    docker compose -p "$STACK_NAME" down
+    COMPOSE_PROJECT_NAME=$(grep '^COMPOSE_PROJECT_NAME=' .env | cut -d '=' -f2)
+    docker compose down
 fi
 
 if [ ! -f "$ENV_FILE" ] || [ "$OVERWRITE_ENV" = "y" ] || [ "$OVERWRITE_ENV" = "Y" ]; then
     ENV_EXAMPLE=".env.example"
     if [ ! -f "$ENV_EXAMPLE" ]; then
-        echo "*** Error: $ENV_EXAMPLE not found! ***"
+        echo
+        echo "===== Error: $ENV_EXAMPLE not found! =====";
+        echo
+
         exit 1
     fi
 
@@ -34,14 +44,23 @@ if [ ! -f "$ENV_FILE" ] || [ "$OVERWRITE_ENV" = "y" ] || [ "$OVERWRITE_ENV" = "Y
     }
 
     rm -f "$ENV_FILE"
-    echo "*** Creating new $ENV_FILE file ***"
+    echo
+    echo "===== Creating new $ENV_FILE file... =====";
+    echo
     touch "$ENV_FILE"
 
-    STACK_NAME=$(get_default_value "STACK_NAME")
-    printf "Enter value for STACK_NAME [default: %s]: " "$STACK_NAME"
+    COMPOSE_PROJECT_NAME=$(get_default_value "COMPOSE_PROJECT_NAME")
+    printf "Enter value for COMPOSE_PROJECT_NAME [default: %s]: " "$COMPOSE_PROJECT_NAME"
     read input
-    STACK_NAME=${input:-$STACK_NAME}
-    echo "STACK_NAME=$STACK_NAME" >> "$ENV_FILE"
+    COMPOSE_PROJECT_NAME=${input:-$COMPOSE_PROJECT_NAME}
+    echo "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" >> "$ENV_FILE"
+
+    printf "Do you want to use COMPOSE_BAKE? (y/n) [default: y]: "
+    read USE_COMPOSE_BAKE
+    USE_COMPOSE_BAKE=${USE_COMPOSE_BAKE:-y}
+    if [ "$USE_COMPOSE_BAKE" = "y" ] || [ "$USE_COMPOSE_BAKE" = "Y" ]; then
+        echo "COMPOSE_BAKE=true" >> "$ENV_FILE"
+    fi
 
     PHP_IMAGE_VERSION=$(get_default_value "PHP_IMAGE_VERSION")
     printf "Enter value for PHP_IMAGE_VERSION [default: %s]: " "$PHP_IMAGE_VERSION"
@@ -137,7 +156,10 @@ if [ ! -f "$ENV_FILE" ] || [ "$OVERWRITE_ENV" = "y" ] || [ "$OVERWRITE_ENV" = "Y
             MINIO_DOMAIN=${input:-$MINIO_DOMAIN}
             echo "EXTRA_HOST_MINIO=$MINIO_DOMAIN:$GATEWAY_IP" >> "$ENV_FILE"
         else
-            echo "*** Error: Unable to retrieve Gateway IP for nginx-proxy network ***"
+            echo
+            echo "===== Error: Unable to retrieve Gateway IP for nginx-proxy network! =====";
+            echo
+
             exit 1
         fi
     fi
@@ -148,7 +170,9 @@ if [ ! -f "$ENV_FILE" ] || [ "$OVERWRITE_ENV" = "y" ] || [ "$OVERWRITE_ENV" = "Y
     REDIS_PASSWORD=${input:-$REDIS_PASSWORD}
     echo "REDIS_PASSWORD=$REDIS_PASSWORD" >> "$ENV_FILE"
 
-    echo "*** Creating new php.ini file ***"
+    echo
+    echo "===== Creating new php.ini file... =====";
+    echo
     cp ../common/example/php.ini.example php.ini
 
     printf "Do you want to enable and use xdebug? (y/n) [default: y]: "
@@ -172,19 +196,25 @@ set -a
 . "$ENV_FILE"
 set +a
 
-echo "*** Creating new init/01-databases.sql file ***"
+echo
+echo "===== Creating new init/01-databases.sql file... =====";
+echo
 [ -d init ] || mkdir init
 cp ../common/example/01-databases.sql.example init/01-databases.sql
 sed -i "s/DB_NAME/${MYSQL_DATABASE}/g" init/01-databases.sql
 
-echo "*** Creating new vhost.conf file ***"
+echo
+echo "===== Creating new vhost.conf file... =====";
+echo
 cp ../common/example/vhost.conf.example vhost.conf
 sed -i "s/DOMAIN_HOST/${DOMAIN_HOST}/g" vhost.conf
-sed -i "s/API_SERVICE/${STACK_NAME}-php/g" vhost.conf
+sed -i "s/API_SERVICE/${COMPOSE_PROJECT_NAME}-php/g" vhost.conf
 
-echo "*** Creating new docker-compose.yml file ***"
+echo
+echo "===== Creating new docker-compose.yml file... =====";
+echo
 cp ../common/example/docker-compose.yml.example docker-compose.yml
-sed -i "s/STACK_NAME/${STACK_NAME}/g" docker-compose.yml
+sed -i "s/COMPOSE_PROJECT_NAME/${COMPOSE_PROJECT_NAME}/g" docker-compose.yml
 
 HAS_MINIO=$(grep "^EXTRA_HOST_MINIO=" "$ENV_FILE" | cut -d '=' -f2)
 HAS_HTTPS=$(grep "^SELF_SIGNED_HOST=" "$ENV_FILE" | cut -d '=' -f2)
@@ -195,20 +225,24 @@ if [ -z "$HAS_HTTPS" ]; then
 fi
 
 if [ -z "$HAS_XDEBUG" ]; then
-    sed -i "/${STACK_NAME}-php:/,/networks:/ { /ports:/d; /XDEBUG_PORT/d }" docker-compose.yml
+    sed -i "/${COMPOSE_PROJECT_NAME}-php:/,/networks:/ { /ports:/d; /XDEBUG_PORT/d }" docker-compose.yml
     sed -i '/location \/coverage {/,/}/d' vhost.conf
 fi
 if [ -z "$HAS_MINIO" ]; then
-    sed -i "/${STACK_NAME}-php:/,/networks:/ { /extra_hosts:/d; /host.docker.internal/d; /EXTRA_HOST_MINIO/d }" docker-compose.yml
-    sed -i "/${STACK_NAME}-php:/,/${STACK_NAME}-mysql:/ { /nginx-proxy/d }" docker-compose.yml
+    sed -i "/${COMPOSE_PROJECT_NAME}-php:/,/networks:/ { /extra_hosts:/d; /host.docker.internal/d; /EXTRA_HOST_MINIO/d }" docker-compose.yml
+    sed -i "/${COMPOSE_PROJECT_NAME}-php:/,/${COMPOSE_PROJECT_NAME}-mysql:/ { /nginx-proxy/d }" docker-compose.yml
 fi
 
 if [ ! -f ../../.env ]; then
-    echo "*** Creating laravel .env file ***"
+    echo
+    echo "===== Creating laravel .env file... =====";
+    echo
     cp ../../.env.example ../../.env
 fi
 
-echo "*** Creating laravel storage/logs/services folder ***"
+echo
+echo "===== Creating laravel storage/logs/services folder... =====";
+echo
 [ -d ../../storage/logs/services ] || mkdir ../../storage/logs/services
 echo "*\n!.gitignore" > ../../storage/logs/services/.gitignore
 
@@ -231,30 +265,39 @@ if [ "$UPDATE_LARAVEL_ENV" = "y" ] || [ "$UPDATE_LARAVEL_ENV" = "Y" ]; then
         sed -i "s|^APP_URL=.*|APP_URL=http://${DOMAIN_HOST}|" ../../.env
     fi
 
-    sed -i "s/^DB_HOST=.*/DB_HOST=$STACK_NAME-mysql/" ../../.env
+    sed -i "s/^DB_HOST=.*/DB_HOST=$COMPOSE_PROJECT_NAME-mysql/" ../../.env
     sed -i "s/^DB_DATABASE=.*/DB_DATABASE=$MYSQL_DATABASE/" ../../.env
     sed -i "s/^DB_USERNAME=.*/DB_USERNAME=$MYSQL_USERNAME/" ../../.env
     sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$MYSQL_PASSWORD/" ../../.env
-    sed -i "s/^REDIS_HOST=.*/REDIS_HOST=$STACK_NAME-redis/" ../../.env
+    sed -i "s/^REDIS_HOST=.*/REDIS_HOST=$COMPOSE_PROJECT_NAME-redis/" ../../.env
     sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$REDIS_PASSWORD/" ../../.env
 fi
 
-echo "*** Building application ***"
-docker compose -p "$STACK_NAME" build --no-cache
-docker compose -p "$STACK_NAME" up -d --force-recreate --remove-orphans
+echo
+echo "===== Building and starting containers... ====="
+echo
+docker compose build --no-cache
+docker compose up -d
 
-echo "*** Waiting for containers to be ready ***"
-until docker logs "${STACK_NAME}-mysql" 2>&1 | grep -q "mysqld: ready for connections"; do
+echo
+echo "===== Waiting for containers to be ready... ====="
+echo
+until docker logs "${COMPOSE_PROJECT_NAME}-mysql" 2>&1 | grep -q "mysqld: ready for connections"; do
   sleep 2
 done
 
-echo "*** Running application scripts ***"
-docker exec "${STACK_NAME}-php" bash -c "composer install"
-docker exec "${STACK_NAME}-php" bash -c "php artisan key:generate"
-docker exec "${STACK_NAME}-php" bash -c "php artisan optimize:clear"
-docker exec "${STACK_NAME}-php" bash -c "php artisan migrate --seed"
-docker exec "${STACK_NAME}-php" bash -c "npm install"
-docker exec "${STACK_NAME}-php" bash -c "npm run build"
-docker exec "${STACK_NAME}-php" bash -c "php artisan storage:link"
+echo
+echo "===== Running application scripts ====="
+echo
 
-echo "*** Setup ended ***"
+docker exec "${COMPOSE_PROJECT_NAME}-php" bash -c "composer install"
+docker exec "${COMPOSE_PROJECT_NAME}-php" bash -c "php artisan key:generate"
+docker exec "${COMPOSE_PROJECT_NAME}-php" bash -c "php artisan optimize:clear"
+docker exec "${COMPOSE_PROJECT_NAME}-php" bash -c "php artisan migrate --seed"
+docker exec "${COMPOSE_PROJECT_NAME}-php" bash -c "npm install"
+docker exec "${COMPOSE_PROJECT_NAME}-php" bash -c "npm run build"
+docker exec "${COMPOSE_PROJECT_NAME}-php" bash -c "php artisan storage:link"
+
+echo
+echo "===== Done! ====="
+echo

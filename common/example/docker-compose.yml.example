@@ -1,6 +1,6 @@
 services:
-    STACK_NAME-nginx:
-        container_name: STACK_NAME-nginx
+    COMPOSE_PROJECT_NAME-nginx:
+        container_name: COMPOSE_PROJECT_NAME-nginx
         restart: unless-stopped
         image: nginx:latest
         volumes:
@@ -9,7 +9,7 @@ services:
         ports:
             - "80"
         depends_on:
-            - STACK_NAME-php
+            - COMPOSE_PROJECT_NAME-php
         environment:
             VIRTUAL_HOST: ${DOMAIN_HOST}
             SELF_SIGNED_HOST: ${SELF_SIGNED_HOST}
@@ -18,10 +18,10 @@ services:
             LETSENCRYPT_EMAIL: ${DOMAIN_EMAIL}
         networks:
             - nginx-proxy
-            - STACK_NAME
+            - COMPOSE_PROJECT_NAME
 
-    STACK_NAME-php:
-        container_name: STACK_NAME-php
+    COMPOSE_PROJECT_NAME-php:
+        container_name: COMPOSE_PROJECT_NAME-php
         user: ${USER_ID}:${GROUP_ID}
         restart: unless-stopped
         build:
@@ -39,8 +39,8 @@ services:
         tmpfs:
             - /dev/shm
         depends_on:
-            - STACK_NAME-mysql
-            - STACK_NAME-redis
+            - COMPOSE_PROJECT_NAME-mysql
+            - COMPOSE_PROJECT_NAME-redis
         ports:
             - ${XDEBUG_PORT}:${XDEBUG_PORT}
         extra_hosts:
@@ -48,10 +48,10 @@ services:
             - ${EXTRA_HOST_MINIO}
         networks:
             - nginx-proxy
-            - STACK_NAME
+            - COMPOSE_PROJECT_NAME
 
-    STACK_NAME-mysql:
-        container_name: STACK_NAME-mysql
+    COMPOSE_PROJECT_NAME-mysql:
+        container_name: COMPOSE_PROJECT_NAME-mysql
         image: ${MYSQL_IMAGE_VERSION}
         restart: unless-stopped
         volumes:
@@ -65,10 +65,10 @@ services:
         ports:
             - ${MYSQL_EXTERNAL_PORT}:3306
         networks:
-            - STACK_NAME
+            - COMPOSE_PROJECT_NAME
 
-    STACK_NAME-redis:
-        container_name: STACK_NAME-redis
+    COMPOSE_PROJECT_NAME-redis:
+        container_name: COMPOSE_PROJECT_NAME-redis
         image: ${REDIS_IMAGE_VERSION}
         restart: unless-stopped
         environment:
@@ -77,9 +77,9 @@ services:
         sysctls:
             - net.core.somaxconn=511
         networks:
-            - STACK_NAME
+            - COMPOSE_PROJECT_NAME
 
 networks:
-    STACK_NAME:
+    COMPOSE_PROJECT_NAME:
     nginx-proxy:
         external: true

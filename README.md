@@ -1,36 +1,95 @@
-## Overview
+# Laravel Docker Stack
 
-Dockerize any laravel application
+Dockerize any Laravel application with support for HTTPS and local tooling.
 
-### Install notes
+## Prerequisites
 
-- copy content or clone this repository into `scripts` folder of your laravel project
-- run `sh scripts/local/initial-setup.sh` to install the project
-- application will be available at `DOMAIN_HOST`
+- Docker Engine & Docker Compose
+- Git
+- [nginx-proxy](https://github.com/ionghitun/nginx-proxy) – local HTTPS and vhost routing
+- Optional: [minio](https://github.com/ionghitun/minio) – local S3-compatible storage
+- Optional: [mailpit](https://github.com/ionghitun/mailpit) – local email server
 
-### Available scripts
+## Installation
 
-- `sh scripts/local/initial-setup.sh` - install the project
+1. **Copy or clone this repository into the `scripts` folder of your Laravel project.**
 
-  You can run it multiple times if you need to reset the project
+2. **Run initial setup**
+   ```bash
+   sh scripts/local/initial-setup.sh
+   ```
+   This script will create the `.env` file and guide you through configuration.
 
+3. **Access the application**
+    - Visit your configured `DOMAIN_HOST` in the browser (e.g., https://app.dev.local).
 
-- run `sh scripts/local/start.sh` to start the project
-- run `sh scripts/local/stop.sh` to stop the project
-- run `sh scripts/local/build.sh` to build or rebuild the project
-- run `sh scripts/local/restart.sh` to restarts docker containers
-- run `sh scripts/local/deploy.sh` to run all commands needed to deploy the project
-- run `sh scripts/local/console.sh` to exec the php container
+## Project Management Scripts
 
-### Local dependencies
+- **Initial setup**
+  ```bash
+  sh scripts/local/initial-setup.sh
+  ```
+  This can be run multiple times if you need to reset the project.
 
-- https://github.com/ionghitun/nginx-proxy - multiple vhost domains locally
-- https://github.com/ionghitun/minio - s3 storage locally
-- https://github.com/ionghitun/mailpit - local mail server
+- **Start containers**
+  ```bash
+  sh scripts/local/start.sh
+  ```
 
-### Deploy on server
+- **Stop containers**
+  ```bash
+  sh scripts/local/down.sh
+  ```
 
-- copy everything from `scripts/local` to `scripts/<server>`, excepting `initial-setup.sh` and adjust files to your needs, keep `.env` ignored
-- is not recommended to use `initial-setup.sh` on server
-- on server copy `scripts/<server>/.env.example` to `scripts/<server>/.env` and adjust to your needs
-- run `sh scripts/<server>/deploy.sh` to deploy the project
+- **Build or rebuild the project**
+  ```bash
+  sh scripts/local/build.sh
+  ```
+
+- **Restart containers**
+  ```bash
+  sh scripts/local/restart.sh
+  ```
+
+- **Deploy (start + application scripts, in here you can add additional scripts)**
+  ```bash
+  sh scripts/local/deploy.sh
+  ```
+
+- **Execute PHP container**
+  ```bash
+  sh scripts/local/console.sh
+  ```
+
+## Deploy on Server
+
+1. **Copy the setup to server-specific folder:**
+   ```bash
+   cp -r scripts/local scripts/<server>
+   rm scripts/<server>/initial-setup.sh
+   ```
+2. **Create a new `.env` for the server:**
+   ```bash
+   cp scripts/<server>/.env.example scripts/<server>/.env
+   # Edit the values to match server configuration
+   ```
+3. **Edit other files as needed:**
+4. **Deploy:**
+   ```bash
+   sh scripts/<server>/deploy.sh
+   ```
+
+## Troubleshooting
+
+- **Docker Issues**: For older versions you might want to remove `COMPOSE_BAKE` from `.env`.
+- **Docker Compose Issues**: Please update and ensure you can use `docker compose`, not old version `docker-compose`
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+## Contributing
+
+Contributions are welcome! Please open issues or submit pull requests following the repository guidelines.
+
+_Happy Coding_
