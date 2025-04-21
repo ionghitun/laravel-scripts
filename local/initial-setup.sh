@@ -3,7 +3,8 @@ echo
 echo "===== Starting setup... ====="
 echo
 
-cd scripts/local || exit
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+cd "$SCRIPT_DIR" || exit
 ENV_FILE="./.env"
 
 if [ -f "$ENV_FILE" ]; then

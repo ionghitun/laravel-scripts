@@ -1,5 +1,6 @@
 #!/bin/sh
-cd scripts || exit
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+cd "$SCRIPT_DIR" || exit
 
 echo "Want to update image before rebuilding? (y/n) [default: y]: "
 read UPDATE_IMAGES

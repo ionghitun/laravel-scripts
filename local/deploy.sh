@@ -3,7 +3,8 @@ echo
 echo "===== Deploy started... ====="
 echo
 
-cd scripts/local || exit
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+cd "$SCRIPT_DIR" || exit
 
 echo
 echo "===== Making sure application is up ====="
