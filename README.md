@@ -63,7 +63,7 @@ Dockerize any Laravel application with support for HTTPS and local tooling.
 
 ## Deploy on Server
 
-1. **Copy the setup to server-specific folder:**
+1. **Copy the setup to the server-specific folder:**
    ```bash
    cp -r scripts/local scripts/<server>
    rm scripts/<server>/initial-setup.sh
@@ -78,6 +78,9 @@ Dockerize any Laravel application with support for HTTPS and local tooling.
    ```bash
    sh scripts/<server>/deploy.sh
    ```
+
+## Tip
+- Consider moving some ignored files to the `common` directory if they should be shared across all environments.
 
 ## Troubleshooting
 

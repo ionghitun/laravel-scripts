@@ -8,6 +8,7 @@ cd "$SCRIPT_DIR" || exit
 ENV_FILE="./.env"
 
 if [ -f "$ENV_FILE" ]; then
+    echo
     printf ".env file already exists. Do you want to reset configuration? (y/n) [default: n]: "
     read OVERWRITE_ENV
     OVERWRITE_ENV=${OVERWRITE_ENV:-n}
@@ -255,7 +256,8 @@ if ! grep -Fxq "!/services/.gitignore" ../../storage/logs/.gitignore; then
     echo "!/services/.gitignore" >> ../../storage/logs/.gitignore
 fi
 
-printf "Want to update laravel .env with known information? (y/n) [default: y]: "
+echo
+printf "Do you want to update laravel .env with known information? (y/n) [default: y]: "
 read UPDATE_LARAVEL_ENV
 UPDATE_LARAVEL_ENV=${UPDATE_LARAVEL_ENV:-y}
 

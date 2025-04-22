@@ -2,13 +2,14 @@
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 cd "$SCRIPT_DIR" || exit
 
-echo "Want to update image before rebuilding? (y/n) [default: y]: "
+echo
+printf "Do you want to update images before rebuilding? (y/n) [default: y]: "
 read UPDATE_IMAGES
 UPDATE_IMAGES=${UPDATE_IMAGES:-y}
 
 if [ "$UPDATE_IMAGES" = "y" ] || [ "$UPDATE_IMAGES" = "Y" ]; then
     echo
-    echo "===== Updating image... ====="
+    echo "===== Updating images... ====="
     echo
 
     PHP_IMAGE_VERSION=$(grep -oP '^PHP_IMAGE_VERSION=\K.*' .env)
@@ -22,7 +23,7 @@ if [ "$UPDATE_IMAGES" = "y" ] || [ "$UPDATE_IMAGES" = "Y" ]; then
 fi
 
 echo
-echo "===== Building and starting container... ====="
+echo "===== Building and starting containers... ====="
 echo
 
 docker compose build --no-cache
