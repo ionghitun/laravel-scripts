@@ -5,73 +5,65 @@ USER root
 
 ARG USER_ID=1000
 ARG GROUP_ID=1000
-
-RUN userdel -f www-data \
-    && getent group www-data && groupdel www-data || true \
-    && groupadd -g ${GROUP_ID} www-data \
-    && useradd -l -u ${USER_ID} -g www-data www-data \
-    && install -d -m 0755 -o www-data -g www-data /home/www-data \
-    && mkdir /var/log/supervisor \
-    && touch /var/run/supervisord.pid \
-    && chown -R www-data:www-data /home/www-data /var/log/supervisor /var/run /var/www
-
-RUN apt-get update \
-    && apt-get upgrade -y \
-    && apt-get install -y --no-install-recommends \
-             supervisor \
-             git \
-             zip \
-             unzip \
-             nano \
-             curl \
-             default-mysql-client cron \
-             zlib1g-dev libicu-dev g++ libxml2-dev libmcrypt-dev libzip-dev libmagickwand-dev imagemagick \
-        && rm -rf /var/lib/apt/lists/* \
-    && pecl update-channels \
-    && export EDITOR="/usr/bin/nano"
-
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-
-RUN docker-php-ext-install intl && docker-php-ext-configure intl
-RUN pecl install redis && docker-php-ext-enable redis
-RUN set -ex \
-    && curl -fsSL 'https://pecl.php.net/get/imagick-3.7.0.tgz' -o imagick.tar.gz \
-    && mkdir -p imagick \
-    && tar -xf imagick.tar.gz -C imagick --strip-components=1 \
-    && rm imagick.tar.gz \
-    && ( \
-        cd imagick \
-        && phpize \
-        && ./configure \
-        && make -j "$(nproc)" \
-        && make install \
-    ) \
-    && rm -r imagick \
-    && docker-php-ext-enable imagick
-RUN docker-php-ext-install gd && docker-php-ext-configure gd --with-freetype --with-jpeg
-RUN pecl install xdebug && docker-php-ext-enable xdebug
-
-RUN docker-php-ext-install zip exif pcntl bcmath soap pdo_mysql sockets gettext
-
+ARG APP_USER=appuser
 ARG NODE_VERSION=22
-RUN curl -SLO https://deb.nodesource.com/nsolid_setup_deb.sh \
-    && chmod 500 nsolid_setup_deb.sh \
-    && ./nsolid_setup_deb.sh ${NODE_VERSION} \
-    && apt-get install -y nodejs \
-    && npm update -g
 
-ADD ./scripts/common/php/crontab /etc/cron.d/laravel-cron
-RUN crontab -u www-data /etc/cron.d/laravel-cron
+RUN set -eux; \
+    EXISTING_USER=$(getent passwd "$USER_ID" | cut -d: -f1 || true); \
+    EXISTING_GROUP=$(getent group "$GROUP_ID" | cut -d: -f1 || true); \
+    if [ -n "$EXISTING_USER" ]; then \
+        echo "User with UID $USER_ID already exists: $EXISTING_USER. Renaming to $APP_USER."; \
+        usermod -l "$APP_USER" "$EXISTING_USER" || true; \
+    else \
+        if [ -z "$EXISTING_GROUP" ]; then \
+            groupadd -g "$GROUP_ID" "$APP_USER"; \
+        fi; \
+        useradd -m -u "$USER_ID" -g "$GROUP_ID" -s /bin/bash "$APP_USER"; \
+    fi; \
+    mkdir -p /home/"$APP_USER" /var/log/supervisor /var/run /app; \
+    chown -R "$APP_USER:$GROUP_ID" /home/"$APP_USER" /var/log/supervisor /var/run /app
 
-RUN usermod -a -G crontab www-data \
+RUN apt-get update  \
+    && apt-get upgrade -y  \
+    && apt-get install -y --no-install-recommends \
+        supervisor git zip unzip nano curl ca-certificates \
+        default-mysql-client cron zlib1g-dev libicu-dev g++ \
+        libxml2-dev libmcrypt-dev libzip-dev libmagickwand-dev imagemagick \
+    && curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && npm update -g \
+    && rm -rf /var/lib/apt/lists/* \
+    && pecl update-channels \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+RUN docker-php-ext-install intl zip exif pcntl bcmath soap pdo_mysql sockets gettext gd \
+    && docker-php-ext-configure intl \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && pecl install redis xdebug \
+    && docker-php-ext-enable redis xdebug \
+    && set -ex; \
+    curl -fsSL 'https://pecl.php.net/get/imagick-3.7.0.tgz' -o imagick.tar.gz; \
+    mkdir -p imagick; \
+    tar -xf imagick.tar.gz -C imagick --strip-components=1; \
+    rm imagick.tar.gz; \
+    ( \
+        cd imagick; \
+        phpize; \
+        ./configure; \
+        make -j "$(nproc)"; \
+        make install \
+    ) && rm -r imagick && docker-php-ext-enable imagick
+
+COPY ./scripts/common/php/crontab /etc/cron.d/laravel-cron
+RUN crontab -u ${APP_USER} /etc/cron.d/laravel-cron \
+    && usermod -a -G crontab ${APP_USER} \
     && chmod gu+s /usr/sbin/cron
 
-RUN python3 -c "import socket as s; sock = s.socket(s.AF_UNIX); sock.bind('/dev/shm/supervisor.sock')"
+USER ${APP_USER}
 
-USER www-data
+ENV COMPOSER_HOME="/home/${APP_USER}/.composer"
+ENV PATH="$COMPOSER_HOME/vendor/bin:$PATH"
 
-RUN echo 'export PATH="$HOME/.composer/vendor/bin:$PATH"' >> ~/.bashrc
+WORKDIR /app
 
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
-
-WORKDIR /var/www

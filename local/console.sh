@@ -2,7 +2,7 @@
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 cd "$SCRIPT_DIR" || exit
 
-COMPOSE_PROJECT_NAME=$(grep -oP '^COMPOSE_PROJECT_NAME=\K.*' .env)
+COMPOSE_PROJECT_NAME=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' .env)
 
 echo
 printf "Do you want to execute container as root? (y/n) [default: n]: "

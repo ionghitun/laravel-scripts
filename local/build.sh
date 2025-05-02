@@ -12,9 +12,9 @@ if [ "$UPDATE_IMAGES" = "y" ] || [ "$UPDATE_IMAGES" = "Y" ]; then
     echo "===== Updating images... ====="
     echo
 
-    PHP_IMAGE_VERSION=$(grep -oP '^PHP_IMAGE_VERSION=\K.*' .env)
-    MYSQL_IMAGE_VERSION=$(grep -oP '^MYSQL_IMAGE_VERSION=\K.*' .env)
-    REDIS_IMAGE_VERSION=$(grep -oP '^REDIS_IMAGE_VERSION=\K.*' .env)
+    PHP_IMAGE_VERSION=$(sed -n 's/^PHP_IMAGE_VERSION=//p' .env)
+    MYSQL_IMAGE_VERSION=$(sed -n 's/^MYSQL_IMAGE_VERSION=//p' .env)
+    REDIS_IMAGE_VERSION=$(sed -n 's/^REDIS_IMAGE_VERSION=//p' .env)
 
     docker pull nginx
     docker pull "$PHP_IMAGE_VERSION"
@@ -26,8 +26,13 @@ echo
 echo "===== Building and starting containers... ====="
 echo
 
-docker compose build --no-cache
-docker compose up -d
+if command -v docker-compose >/dev/null 2>&1; then
+    docker-compose build --no-cache
+    docker-compose up -d
+else
+    docker compose build --no-cache
+    docker compose up -d
+fi
 
 echo
 echo "===== Done! ====="

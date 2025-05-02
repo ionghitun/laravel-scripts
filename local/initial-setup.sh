@@ -27,8 +27,11 @@ echo "===== Removing old configuration... =====";
 echo
 
 if [ -f "docker-compose.yml" ]; then
-    COMPOSE_PROJECT_NAME=$(grep '^COMPOSE_PROJECT_NAME=' .env | cut -d '=' -f2)
-    docker compose down
+    if command -v docker-compose >/dev/null 2>&1; then
+        docker-compose down
+    else
+        docker compose down
+    fi
 fi
 
 if [ ! -f "$ENV_FILE" ] || [ "$OVERWRITE_ENV" = "y" ] || [ "$OVERWRITE_ENV" = "Y" ]; then
@@ -42,7 +45,7 @@ if [ ! -f "$ENV_FILE" ] || [ "$OVERWRITE_ENV" = "y" ] || [ "$OVERWRITE_ENV" = "Y
     fi
 
     get_default_value() {
-        grep "^$1=" "$ENV_EXAMPLE" | cut -d '=' -f2
+        sed -n "s/^$1=//p" "$ENV_EXAMPLE"
     }
 
     rm -f "$ENV_FILE"
@@ -113,6 +116,13 @@ if [ ! -f "$ENV_FILE" ] || [ "$OVERWRITE_ENV" = "y" ] || [ "$OVERWRITE_ENV" = "Y
 
     GROUP_ID=$(id -g)
     echo "GROUP_ID=$GROUP_ID" >> "$ENV_FILE"
+
+    APP_USER=$(get_default_value "APP_USER")
+    printf "Enter value for APP_USER [default: %s]: " "$APP_USER"
+    read input
+    APP_USER=${input:-$APP_USER}
+    echo "APP_USER=$APP_USER" >> "$ENV_FILE"
+    sed -i "s/^user=.*/user=$APP_USER/" ../common/php/supervisord.conf
 
     MYSQL_ROOT_PASSWORD=$(get_default_value "MYSQL_ROOT_PASSWORD")
     printf "Enter value for MYSQL_ROOT_PASSWORD [default: %s]: " "$MYSQL_ROOT_PASSWORD"
@@ -218,9 +228,9 @@ echo
 cp ../common/example/docker-compose.yml.example docker-compose.yml
 sed -i "s/COMPOSE_PROJECT_NAME/${COMPOSE_PROJECT_NAME}/g" docker-compose.yml
 
-HAS_MINIO=$(grep "^EXTRA_HOST_MINIO=" "$ENV_FILE" | cut -d '=' -f2)
-HAS_HTTPS=$(grep "^SELF_SIGNED_HOST=" "$ENV_FILE" | cut -d '=' -f2)
-HAS_XDEBUG=$(grep "^XDEBUG_PORT=" "$ENV_FILE" | cut -d '=' -f2)
+HAS_MINIO=$(sed -n 's/^EXTRA_HOST_MINIO=//p' "$ENV_FILE")
+HAS_HTTPS=$(sed -n 's/^SELF_SIGNED_HOST=//p' "$ENV_FILE")
+HAS_XDEBUG=$(sed -n 's/^XDEBUG_PORT=//p' "$ENV_FILE")
 
 if [ -z "$HAS_HTTPS" ]; then
     sed -i '/SELF_SIGNED_HOST:/d' docker-compose.yml
@@ -277,10 +287,24 @@ if [ "$UPDATE_LARAVEL_ENV" = "y" ] || [ "$UPDATE_LARAVEL_ENV" = "Y" ]; then
 fi
 
 echo
+echo "===== Updating images... ====="
+echo
+
+docker pull nginx
+docker pull "$PHP_IMAGE_VERSION"
+docker pull "$MYSQL_IMAGE_VERSION"
+docker pull "$REDIS_IMAGE_VERSION"
+
+echo
 echo "===== Building and starting containers... ====="
 echo
-docker compose build --no-cache
-docker compose up -d
+if command -v docker-compose >/dev/null 2>&1; then
+    docker-compose build --no-cache
+    docker-compose up -d
+else
+    docker compose build --no-cache
+    docker compose up -d
+fi
 
 echo
 echo "===== Waiting for containers to be ready... ====="

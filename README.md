@@ -80,6 +80,7 @@ Dockerize any Laravel application with support for HTTPS and local tooling.
    ```
 
 ## Tip
+
 - Consider moving some ignored files to the `common` directory if they should be shared across all environments.
 
 ## Troubleshooting

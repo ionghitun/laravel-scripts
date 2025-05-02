@@ -5,7 +5,11 @@ echo
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 cd "$SCRIPT_DIR" || exit
-docker compose down
+if command -v docker-compose >/dev/null 2>&1; then
+    docker-compose down
+else
+    docker compose down
+fi
 
 echo
 echo "===== Done! ====="

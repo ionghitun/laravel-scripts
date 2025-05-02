@@ -1,2 +1,2 @@
 SHELL=/bin/bash
-* * * * * cd /var/www && /usr/local/bin/php /var/www/artisan schedule:run
+* * * * * cd /app && /usr/local/bin/php artisan schedule:run

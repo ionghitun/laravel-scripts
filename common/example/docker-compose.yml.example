@@ -4,7 +4,7 @@ services:
         restart: unless-stopped
         image: nginx:latest
         volumes:
-            - ../../:/var/www
+            - ../../:/app
             - ./vhost.conf:/etc/nginx/conf.d/custom.conf
         ports:
             - "80"
@@ -33,7 +33,7 @@ services:
                 GROUP_ID: ${GROUP_ID}
                 NODE_VERSION: ${NODE_VERSION}
         volumes:
-            - ../../:/var/www
+            - ../../:/app
             - ./php.ini:/usr/local/etc/php/conf.d/php.ini
             - ../common/php/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf
         tmpfs:

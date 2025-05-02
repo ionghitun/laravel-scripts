@@ -10,13 +10,17 @@ echo
 echo "===== Making sure application is up ====="
 echo
 
-docker compose up -d
+if command -v docker-compose >/dev/null 2>&1; then
+    docker-compose up -d
+else
+    docker compose up -d
+fi
 
 echo
 echo "===== Running application scripts ====="
 echo
 
-COMPOSE_PROJECT_NAME=$(grep -oP '^COMPOSE_PROJECT_NAME=\K.*' .env)
+COMPOSE_PROJECT_NAME=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' .env)
 
 docker exec "${COMPOSE_PROJECT_NAME}-php" bash -c "composer install"
 docker exec "${COMPOSE_PROJECT_NAME}-php" bash -c "php artisan optimize:clear"
