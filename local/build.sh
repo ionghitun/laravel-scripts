@@ -12,9 +12,9 @@ if [ "$UPDATE_IMAGES" = "y" ] || [ "$UPDATE_IMAGES" = "Y" ]; then
     echo "===== Updating images... ====="
     echo
 
-    PHP_IMAGE_VERSION=$(sed -n 's/^PHP_IMAGE_VERSION=//p' .env)
-    MYSQL_IMAGE_VERSION=$(sed -n 's/^MYSQL_IMAGE_VERSION=//p' .env)
-    REDIS_IMAGE_VERSION=$(sed -n 's/^REDIS_IMAGE_VERSION=//p' .env)
+    PHP_IMAGE_VERSION=$(sed -n 's/^PHP_IMAGE_VERSION=//p' .env | tr -d '\r' | tr -d '"')
+    MYSQL_IMAGE_VERSION=$(sed -n 's/^MYSQL_IMAGE_VERSION=//p' .env | tr -d '\r' | tr -d '"')
+    REDIS_IMAGE_VERSION=$(sed -n 's/^REDIS_IMAGE_VERSION=//p' .env | tr -d '\r' | tr -d '"')
 
     docker pull nginx
     docker pull "$PHP_IMAGE_VERSION"

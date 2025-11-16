@@ -2,7 +2,7 @@
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 cd "$SCRIPT_DIR" || exit
 
-COMPOSE_PROJECT_NAME=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' .env)
+COMPOSE_PROJECT_NAME=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' .env | tr -d '\r' | tr -d '"')
 
 echo
 printf "Do you want to execute container as root? (y/n) [default: n]: "

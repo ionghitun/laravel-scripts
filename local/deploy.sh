@@ -20,7 +20,7 @@ echo
 echo "===== Running application scripts ====="
 echo
 
-COMPOSE_PROJECT_NAME=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' .env)
+COMPOSE_PROJECT_NAME=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' .env | tr -d '\r' | tr -d '"')
 
 docker exec "${COMPOSE_PROJECT_NAME}-php" bash -c "composer install"
 docker exec "${COMPOSE_PROJECT_NAME}-php" bash -c "php artisan optimize:clear"

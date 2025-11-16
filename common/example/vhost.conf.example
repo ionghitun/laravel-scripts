@@ -1,6 +1,9 @@
-proxy_buffers 256 1024k;
-proxy_buffer_size 512k;
-proxy_busy_buffers_size 1024k;
+server_tokens off;
+
+gzip on;
+gzip_types text/css application/javascript application/json image/svg+xml;
+gzip_vary on;
+gzip_min_length 1024;
 
 server {
     listen 80;
@@ -11,43 +14,52 @@ server {
     client_max_body_size 128M;
     client_body_buffer_size 32M;
 
-    add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-Content-Type-Options "nosniff";
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
 
     index index.php;
-
     charset utf-8;
 
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
+    location ~* \.(?:css|js|mjs|map|jpg|jpeg|png|gif|ico|svg|webp|avif|woff2?|ttf|eot)$ {
+        access_log off;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
     }
 
-    location /coverage {
-        allow all;
-        index index.html index.php;
-        try_files $uri $uri/ /coverage/index.html;
-    }
+    location / { try_files $uri $uri/ /index.php?$query_string; }
 
     location = /favicon.ico { access_log off; log_not_found off; }
     location = /robots.txt  { access_log off; log_not_found off; }
 
-    access_log  /var/log/nginx/access.log;
-    error_log  /var/log/nginx/error.log warn;
-
     error_page 404 /index.php;
 
+    access_log  /var/log/nginx/access.log;
+    error_log   /var/log/nginx/error.log warn;
+
     location ~ ^/index\.php(/|$) {
-        fastcgi_buffers 256 1024k;
-        fastcgi_buffer_size 512k;
-        fastcgi_busy_buffers_size 1024k;
+        fastcgi_buffers 16 16k;
+        fastcgi_buffer_size 32k;
+        fastcgi_busy_buffers_size 64k;
 
         fastcgi_pass API_SERVICE:9000;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+
         include fastcgi_params;
+
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT   $realpath_root;
+
         fastcgi_hide_header X-Powered-By;
+        fastcgi_read_timeout 120s;
+        fastcgi_index index.php;
     }
 
-    location ~ /\.(?!well-known).* {
-        deny all;
-    }
+    location ~ \.php$ { return 404; }
+
+    location ~ /\.(?!well-known)         { deny all; }
+    location ~* /(artisan|composer\.(json|lock)|package(-lock)?\.json|vite(\.config)?\.js|webpack\.mix\.js)$ { deny all; }
+    location ~* ^/(vendor|node_modules|storage)/ { deny all; }
+    location ~ ^/\.git/ { deny all; } # extra guard
 }

@@ -35,6 +35,7 @@ services:
         volumes:
             - ../../:/app
             - ./php.ini:/usr/local/etc/php/conf.d/php.ini
+            - ./xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
             - ../common/php/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf
         tmpfs:
             - /dev/shm

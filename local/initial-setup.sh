@@ -45,7 +45,7 @@ if [ ! -f "$ENV_FILE" ] || [ "$OVERWRITE_ENV" = "y" ] || [ "$OVERWRITE_ENV" = "Y
     fi
 
     get_default_value() {
-        sed -n "s/^$1=//p" "$ENV_EXAMPLE"
+        sed -n "s/^$1=//p" "$ENV_EXAMPLE" | tr -d '\r' | tr -d '"'
     }
 
     rm -f "$ENV_FILE"
@@ -186,6 +186,7 @@ if [ ! -f "$ENV_FILE" ] || [ "$OVERWRITE_ENV" = "y" ] || [ "$OVERWRITE_ENV" = "Y
     echo "===== Creating new php.ini file... =====";
     echo
     cp ../common/example/php.ini.example php.ini
+    cp ../common/example/xdebug.ini.example xdebug.ini
 
     printf "Do you want to enable and use xdebug? (y/n) [default: y]: "
     read USE_XDEBUG
@@ -195,11 +196,13 @@ if [ ! -f "$ENV_FILE" ] || [ "$OVERWRITE_ENV" = "y" ] || [ "$OVERWRITE_ENV" = "Y
         printf "Enter Xdebug port [default: %s]: " "$XDEBUG_PORT"
         read input
         XDEBUG_PORT=${input:-$XDEBUG_PORT}
+        echo "INSTALL_XDEBUG=true" >> "$ENV_FILE"
         echo "XDEBUG_PORT=$XDEBUG_PORT" >> "$ENV_FILE"
 
-        sed -i "s/^xdebug.client_port = .*/xdebug.client_port = $XDEBUG_PORT/" php.ini
+        sed -i "s/^xdebug.client_port = .*/xdebug.client_port = $XDEBUG_PORT/" xdebug.ini
     else
-        sed -i '/xdebug/d' php.ini
+        sed -i '/xdebug/d' xdebug.ini
+        echo "INSTALL_XDEBUG=false" >> "$ENV_FILE"
     fi
 fi
 
@@ -228,9 +231,9 @@ echo
 cp ../common/example/docker-compose.yml.example docker-compose.yml
 sed -i "s/COMPOSE_PROJECT_NAME/${COMPOSE_PROJECT_NAME}/g" docker-compose.yml
 
-HAS_MINIO=$(sed -n 's/^EXTRA_HOST_MINIO=//p' "$ENV_FILE")
-HAS_HTTPS=$(sed -n 's/^SELF_SIGNED_HOST=//p' "$ENV_FILE")
-HAS_XDEBUG=$(sed -n 's/^XDEBUG_PORT=//p' "$ENV_FILE")
+HAS_MINIO=$(sed -n 's/^EXTRA_HOST_MINIO=//p' "$ENV_FILE" | tr -d '\r' | tr -d '"')
+HAS_HTTPS=$(sed -n 's/^SELF_SIGNED_HOST=//p' "$ENV_FILE" | tr -d '\r' | tr -d '"')
+HAS_XDEBUG=$(sed -n 's/^XDEBUG_PORT=//p' "$ENV_FILE" | tr -d '\r' | tr -d '"')
 
 if [ -z "$HAS_HTTPS" ]; then
     sed -i '/SELF_SIGNED_HOST:/d' docker-compose.yml
