@@ -43,7 +43,7 @@ services:
             - ./xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
             - ../common/php/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf
         tmpfs:
-            - /dev/shm
+            - /dev/shm:size=256m,uid=${USER_ID},gid=${GROUP_ID},mode=1777
         depends_on:
             - COMPOSE_PROJECT_NAME-mysql
             - COMPOSE_PROJECT_NAME-redis

@@ -9,23 +9,6 @@ ARG APP_USER=appuser
 ARG NODE_VERSION=22
 ARG INSTALL_XDEBUG=false
 
-RUN set -eux; \
-    EXISTING_USER=$(getent passwd "$USER_ID" | cut -d: -f1 || true); \
-    EXISTING_GROUP=$(getent group "$GROUP_ID" | cut -d: -f1 || true); \
-    if [ -n "$EXISTING_USER" ]; then \
-        echo "User with UID $USER_ID already exists: $EXISTING_USER. Renaming to $APP_USER."; \
-        usermod -l "$APP_USER" "$EXISTING_USER" || true; \
-    else \
-        if [ -z "$EXISTING_GROUP" ]; then \
-            groupadd -g "$GROUP_ID" "$APP_USER"; \
-        fi; \
-        useradd -m -u "$USER_ID" -g "$GROUP_ID" -s /bin/bash "$APP_USER"; \
-    fi; \
-    mkdir -p /home/"$APP_USER" /var/log/supervisor /var/run /app; \
-    chown -R "$APP_USER:$GROUP_ID" /home/"$APP_USER" /var/log/supervisor /var/run /app; \
-    touch /var/run/supervisord.pid \
-    chown "$APP_USER:$GROUP_ID" /var/run/supervisord.pid;
-
 RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/apt \
     set -eux; \
     apt-get update; \
@@ -59,6 +42,23 @@ RUN set -eux; \
 
 RUN set -eux; \
     curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+RUN set -eux; \
+    EXISTING_USER=$(getent passwd "$USER_ID" | cut -d: -f1 || true); \
+    EXISTING_GROUP=$(getent group "$GROUP_ID" | cut -d: -f1 || true); \
+    if [ -n "$EXISTING_USER" ]; then \
+        echo "User with UID $USER_ID already exists: $EXISTING_USER. Renaming to $APP_USER."; \
+        usermod -l "$APP_USER" "$EXISTING_USER" || true; \
+    else \
+        if [ -z "$EXISTING_GROUP" ]; then \
+            groupadd -g "$GROUP_ID" "$APP_USER"; \
+        fi; \
+        useradd -m -u "$USER_ID" -g "$GROUP_ID" -s /bin/bash "$APP_USER"; \
+    fi; \
+    mkdir -p /home/"$APP_USER" /var/log/supervisor /var/run/supervisor /app; \
+    chown -R "$APP_USER:$GROUP_ID" /home/"$APP_USER" /var/log/supervisor /var/run/supervisor /app; \
+    touch /var/run/supervisor/supervisord.pid; \
+    chown "$APP_USER:$GROUP_ID" /var/run/supervisor/supervisord.pid
 
 USER ${APP_USER}
 ENV COMPOSER_HOME="/home/${APP_USER}/.composer"
